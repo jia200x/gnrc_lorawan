@@ -35,12 +35,8 @@ int gnrc_lorawan_mic_is_valid(uint8_t *buf, size_t len, uint8_t *nwkskey)
     lorawan_hdr_t *lw_hdr = (lorawan_hdr_t *) buf;
 
     uint32_t fcnt = byteorder_ntohs(byteorder_ltobs(lw_hdr->fcnt));
-    iolist_t data = {
-        .iol_base = buf,
-        .iol_len = len-MIC_SIZE
-    };
-    gnrc_lorawan_calculate_mic(&lw_hdr->addr, fcnt, GNRC_LORAWAN_DIR_DOWNLINK, (iolist_t *) &data, nwkskey, &calc_mic);
-    return calc_mic.u32 == ((le_uint32_t *) (buf+data.iol_len))->u32;
+    gnrc_lorawan_calculate_mic(&lw_hdr->addr, fcnt, GNRC_LORAWAN_DIR_DOWNLINK, buf, len-MIC_SIZE, nwkskey, &calc_mic);
+    return calc_mic.u32 == ((le_uint32_t *) (buf+len-MIC_SIZE))->u32;
 }
 
 uint32_t gnrc_lorawan_fcnt_stol(uint32_t fcnt_down, uint16_t s_fcnt)
@@ -230,14 +226,8 @@ size_t gnrc_lorawan_build_uplink(gnrc_lorawan_t *mac, iolist_t *payload, int con
     };
     gnrc_lorawan_encrypt_payload(&temp, &mac->dev_addr, mac->mcps.fcnt, GNRC_LORAWAN_DIR_UPLINK, port ? mac->appskey : mac->nwkskey);
 
-    iolist_t mhdr = {
-        .iol_base = out,
-        .iol_len = buf.index,
-        .iol_next = NULL
-    };
-
     gnrc_lorawan_calculate_mic(&mac->dev_addr, mac->mcps.fcnt, GNRC_LORAWAN_DIR_UPLINK,
-                               (iolist_t *) &mhdr, mac->nwkskey, (le_uint32_t*) &buf.data[buf.index]);
+                               out, buf.index, mac->nwkskey, (le_uint32_t*) &buf.data[buf.index]);
     buf.index += MIC_SIZE;
     return buf.index;
 }

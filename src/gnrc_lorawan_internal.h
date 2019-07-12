@@ -207,7 +207,8 @@ void  gnrc_lorawan_calculate_join_mic(const iolist_t *io, const uint8_t *key, le
  * @param[out] out calculated MIC
  */
 void gnrc_lorawan_calculate_mic(const le_uint32_t *dev_addr, uint32_t fcnt,
-                                uint8_t dir, iolist_t *pkt, const uint8_t *nwkskey, le_uint32_t *out);
+                                uint8_t dir, uint8_t *buf, size_t len,
+                                const uint8_t *nwkskey, le_uint32_t *out);
 
 /**
  * @brief Build a MCPS LoRaWAN header
