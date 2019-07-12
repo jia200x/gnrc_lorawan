@@ -14,13 +14,11 @@
  */
 #include <stdio.h>
 #include <string.h>
-#include "net/gnrc/netif.h"
 #include "net/lora.h"
 #include "gnrc_lorawan/lorawan.h"
 #include "gnrc_lorawan/region.h"
 #include "gnrc_lorawan_internal.h"
 #include "errno.h"
-#include "net/gnrc/pktbuf.h"
 
 #include "net/lorawan/hdr.h"
 

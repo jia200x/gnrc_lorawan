@@ -23,8 +23,6 @@
 #include "iolist.h"
 #include "net/lora.h"
 #include "net/lorawan/hdr.h"
-#include "net/gnrc/pktbuf.h"
-#include "net/netdev.h"
 #include "net/loramac.h"
 #include "gnrc_lorawan/lorawan.h"
 
