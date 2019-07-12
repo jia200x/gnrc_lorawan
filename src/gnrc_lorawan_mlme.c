@@ -55,9 +55,7 @@ static void _build_join_req_pkt(uint8_t *appeui, uint8_t *deveui,
     le_uint16_t l_dev_nonce = *((le_uint16_t *) dev_nonce);
     hdr->dev_nonce = l_dev_nonce;
 
-    iolist_t io = { .iol_base = out, .iol_len = JOIN_REQUEST_SIZE - MIC_SIZE,
-                    .iol_next = NULL };
-    gnrc_lorawan_calculate_join_mic(&io, appkey, &hdr->mic);
+    gnrc_lorawan_calculate_join_mic(out, JOIN_REQUEST_SIZE - MIC_SIZE, appkey, &hdr->mic);
 }
 
 static int gnrc_lorawan_send_join_request(gnrc_lorawan_t *mac, uint8_t *deveui,
@@ -114,11 +112,9 @@ void gnrc_lorawan_mlme_process_join(gnrc_lorawan_t *mac, uint8_t *data, size_t s
                                      has_cflist, out);
     memcpy(((uint8_t *) data) + 1, out, size - 1);
 
-    iolist_t io = { .iol_base = data, .iol_len = size - MIC_SIZE,
-                    .iol_next = NULL };
     le_uint32_t mic;
     le_uint32_t *expected_mic = (le_uint32_t *) (((uint8_t *) data) + size - MIC_SIZE);
-    gnrc_lorawan_calculate_join_mic(&io, mac->appskey, &mic);
+    gnrc_lorawan_calculate_join_mic(data, size - MIC_SIZE, mac->appskey, &mic);
     if (mic.u32 != expected_mic->u32) {
         DEBUG("gnrc_lorawan_mlme: wrong MIC.\n");
         status = -EBADMSG;

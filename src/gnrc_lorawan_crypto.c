@@ -46,13 +46,10 @@ typedef struct  __attribute__((packed)) {
     uint8_t len;
 } lorawan_block_t;
 
-void gnrc_lorawan_calculate_join_mic(const iolist_t *io, const uint8_t *key, le_uint32_t *out)
+void gnrc_lorawan_calculate_join_mic(const uint8_t *buf, size_t len, const uint8_t *key, le_uint32_t *out)
 {
     cmac_init(&CmacContext, key, LORAMAC_APPKEY_LEN);
-    while (io != NULL) {
-        cmac_update(&CmacContext, io->iol_base, io->iol_len);
-        io = io->iol_next;
-    }
+    cmac_update(&CmacContext, buf, len);
     cmac_final(&CmacContext, digest);
 
     memcpy(out, digest, sizeof(le_uint32_t));

@@ -194,7 +194,7 @@ void gnrc_lorawan_process_fopts(gnrc_lorawan_t *mac, uint8_t *fopts, size_t size
  * @param[in] key key used to calculate the MIC
  * @param[out] out calculated MIC
  */
-void  gnrc_lorawan_calculate_join_mic(const iolist_t *io, const uint8_t *key, le_uint32_t *out);
+void  gnrc_lorawan_calculate_join_mic(const uint8_t *buf, size_t len, const uint8_t *key, le_uint32_t *out);
 
 /**
  * @brief Calculate Message Integrity Code for a MCPS message
