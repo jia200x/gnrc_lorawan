@@ -107,7 +107,7 @@ typedef struct {
  * @param[in] dir direction of the packet (0 if uplink, 1 if downlink)
  * @param[in] appskey pointer to the Application Session Key
  */
-void gnrc_lorawan_encrypt_payload(iolist_t *iolist, const le_uint32_t *dev_addr, uint32_t fcnt, uint8_t dir, const uint8_t *appskey);
+void gnrc_lorawan_encrypt_payload(uint8_t *buf, size_t len, const le_uint32_t *dev_addr, uint32_t fcnt, uint8_t dir, const uint8_t *appskey);
 
 /**
  * @brief Decrypts join accept message

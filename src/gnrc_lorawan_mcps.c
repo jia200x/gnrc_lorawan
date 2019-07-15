@@ -145,7 +145,7 @@ void gnrc_lorawan_mcps_process_downlink(gnrc_lorawan_t *mac, uint8_t *buf,
             key = mac->nwkskey;
             fopts = &_pkt.enc_payload;
         }
-        gnrc_lorawan_encrypt_payload(&_pkt.enc_payload, &_pkt.hdr->addr, byteorder_ntohs(byteorder_ltobs(_pkt.hdr->fcnt)), GNRC_LORAWAN_DIR_DOWNLINK, key);
+        gnrc_lorawan_encrypt_payload(_pkt.enc_payload.iol_base, _pkt.enc_payload.iol_len, &_pkt.hdr->addr, byteorder_ntohs(byteorder_ltobs(_pkt.hdr->fcnt)), GNRC_LORAWAN_DIR_DOWNLINK, key);
     }
 
     mac->mcps.fcnt_down = _pkt.fcnt_down;
@@ -219,12 +219,7 @@ size_t gnrc_lorawan_build_uplink(gnrc_lorawan_t *mac, iolist_t *payload, int con
         buf.index += psize;
     }
 
-    iolist_t temp = {
-        .iol_base = pl,
-        .iol_len = psize,
-        .iol_next = NULL
-    };
-    gnrc_lorawan_encrypt_payload(&temp, &mac->dev_addr, mac->mcps.fcnt, GNRC_LORAWAN_DIR_UPLINK, port ? mac->appskey : mac->nwkskey);
+    gnrc_lorawan_encrypt_payload(pl, psize, &mac->dev_addr, mac->mcps.fcnt, GNRC_LORAWAN_DIR_UPLINK, port ? mac->appskey : mac->nwkskey);
 
     gnrc_lorawan_calculate_mic(&mac->dev_addr, mac->mcps.fcnt, GNRC_LORAWAN_DIR_UPLINK,
                                out, buf.index, mac->nwkskey, (le_uint32_t*) &buf.data[buf.index]);

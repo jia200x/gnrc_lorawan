@@ -80,7 +80,7 @@ void gnrc_lorawan_calculate_mic(const le_uint32_t *dev_addr, uint32_t fcnt,
     memcpy(out, digest, sizeof(le_uint32_t));
 }
 
-void gnrc_lorawan_encrypt_payload(iolist_t *iolist, const le_uint32_t *dev_addr, uint32_t fcnt, uint8_t dir, const uint8_t *appskey)
+void gnrc_lorawan_encrypt_payload(uint8_t *buf, size_t len, const le_uint32_t *dev_addr, uint32_t fcnt, uint8_t dir, const uint8_t *appskey)
 {
     uint8_t s_block[16];
     uint8_t a_block[16];
@@ -103,18 +103,14 @@ void gnrc_lorawan_encrypt_payload(iolist_t *iolist, const le_uint32_t *dev_addr,
     block->u32_pad = 0;
 
     int c = 0;
-    for (iolist_t *io = iolist; io != NULL; io = io->iol_next) {
-        for (unsigned i = 0; i < io->iol_len; i++) {
-            uint8_t *v = io->iol_base;
-
-            if ((c & SBIT_MASK) == 0) {
-                block->len = (c >> 4) + 1;
-                cipher_encrypt(&AesContext, a_block, s_block);
-            }
-
-            v[i] = v[i] ^ s_block[c & SBIT_MASK];
-            c++;
+    for (unsigned i = 0; i < len; i++) {
+        if ((c & SBIT_MASK) == 0) {
+            block->len = (c >> 4) + 1;
+            cipher_encrypt(&AesContext, a_block, s_block);
         }
+
+        buf[i] = buf[i] ^ s_block[c & SBIT_MASK];
+        c++;
     }
 }
 
