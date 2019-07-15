@@ -37,27 +37,6 @@ static int _buffer_reset(lorawan_buffer_t *buf, uint8_t *data, size_t length)
     return 0;
 }
 
-static void _build_join_req_pkt(uint8_t *appeui, uint8_t *deveui,
-        uint8_t *appkey, uint8_t *dev_nonce, void *out)
-{
-    lorawan_join_request_t *hdr = out;
-
-    hdr->mt_maj = 0;
-    lorawan_hdr_set_mtype((lorawan_hdr_t *) hdr, MTYPE_JOIN_REQUEST);
-    lorawan_hdr_set_maj((lorawan_hdr_t *) hdr, MAJOR_LRWAN_R1);
-
-    le_uint64_t l_appeui = *((le_uint64_t *) appeui);
-    le_uint64_t l_deveui = *((le_uint64_t *) deveui);
-
-    hdr->app_eui = l_appeui;
-    hdr->dev_eui = l_deveui;
-
-    le_uint16_t l_dev_nonce = *((le_uint16_t *) dev_nonce);
-    hdr->dev_nonce = l_dev_nonce;
-
-    gnrc_lorawan_calculate_join_mic(out, JOIN_REQUEST_SIZE - MIC_SIZE, appkey, &hdr->mic);
-}
-
 static int gnrc_lorawan_send_join_request(gnrc_lorawan_t *mac, uint8_t *deveui,
                                           uint8_t *appeui, uint8_t *appkey, uint8_t dr)
 {
@@ -69,8 +48,22 @@ static int gnrc_lorawan_send_join_request(gnrc_lorawan_t *mac, uint8_t *deveui,
 
     /* build join request */
     uint8_t pkt[sizeof(lorawan_join_request_t)];
-    _build_join_req_pkt(appeui, deveui, appkey,
-            mac->mlme.dev_nonce, pkt);
+    lorawan_join_request_t *hdr = (lorawan_join_request_t*) pkt;
+
+    hdr->mt_maj = 0;
+    lorawan_hdr_set_mtype((lorawan_hdr_t *) hdr, MTYPE_JOIN_REQUEST);
+    lorawan_hdr_set_maj((lorawan_hdr_t *) hdr, MAJOR_LRWAN_R1);
+
+    le_uint64_t l_appeui = *((le_uint64_t *) appeui);
+    le_uint64_t l_deveui = *((le_uint64_t *) deveui);
+
+    hdr->app_eui = l_appeui;
+    hdr->dev_eui = l_deveui;
+
+    le_uint16_t l_dev_nonce = *((le_uint16_t *) mac->mlme.dev_nonce);
+    hdr->dev_nonce = l_dev_nonce;
+
+    gnrc_lorawan_calculate_join_mic(mac, pkt, JOIN_REQUEST_SIZE - MIC_SIZE, appkey, &hdr->mic);
 
     /* We need a random delay for join request. Otherwise there might be
      * network congestion if a group of nodes start at the same time */
@@ -108,13 +101,13 @@ void gnrc_lorawan_mlme_process_join(gnrc_lorawan_t *mac, uint8_t *data, size_t s
     /* Substract 1 from join accept max size, since the MHDR was already read */
     uint8_t out[GNRC_LORAWAN_JOIN_ACCEPT_MAX_SIZE - 1];
     uint8_t has_cflist = (size - 1) >= CFLIST_SIZE;
-    gnrc_lorawan_decrypt_join_accept(mac->appskey, ((uint8_t *) data) + 1,
+    gnrc_lorawan_decrypt_join_accept(mac, mac->appskey, ((uint8_t *) data) + 1,
                                      has_cflist, out);
     memcpy(((uint8_t *) data) + 1, out, size - 1);
 
     le_uint32_t mic;
     le_uint32_t *expected_mic = (le_uint32_t *) (((uint8_t *) data) + size - MIC_SIZE);
-    gnrc_lorawan_calculate_join_mic(data, size - MIC_SIZE, mac->appskey, &mic);
+    gnrc_lorawan_calculate_join_mic(mac, data, size - MIC_SIZE, mac->appskey, &mic);
     if (mic.u32 != expected_mic->u32) {
         DEBUG("gnrc_lorawan_mlme: wrong MIC.\n");
         status = -EBADMSG;
@@ -122,7 +115,7 @@ void gnrc_lorawan_mlme_process_join(gnrc_lorawan_t *mac, uint8_t *data, size_t s
     }
 
     lorawan_join_accept_t *ja_hdr = (lorawan_join_accept_t *) data;
-    gnrc_lorawan_generate_session_keys(ja_hdr->app_nonce, mac->mlme.dev_nonce, mac->appskey, mac->nwkskey, mac->appskey);
+    gnrc_lorawan_generate_session_keys(mac, ja_hdr->app_nonce, mac->mlme.dev_nonce, mac->appskey, mac->nwkskey, mac->appskey);
 
     le_uint32_t le_nid;
     le_nid.u32 = 0;

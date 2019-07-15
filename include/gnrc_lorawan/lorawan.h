@@ -343,6 +343,11 @@ void gnrc_lorawan_radio_rx_on(gnrc_lorawan_t *mac);
 void gnrc_lorawan_radio_set_sf(gnrc_lorawan_t *mac, uint8_t sf);
 void gnrc_lorawan_radio_set_bw(gnrc_lorawan_t *mac, uint8_t bw);
 void gnrc_lorawan_radio_send(gnrc_lorawan_t *mac, iolist_t *io);
+void gnrc_lorawan_cmac_init(gnrc_lorawan_t *mac, const void *key);
+void gnrc_lorawan_cmac_update(gnrc_lorawan_t *mac, const void *buf, size_t len);
+void gnrc_lorawan_cmac_finish(gnrc_lorawan_t *mac, void *out);
+void gnrc_lorawan_aes128_init(gnrc_lorawan_t *mac, const void *key);
+void gnrc_lorawan_aes128_encrypt(gnrc_lorawan_t *mac, const void *in, void *out);
 
 #ifdef __cplusplus
 }

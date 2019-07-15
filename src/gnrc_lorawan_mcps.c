@@ -28,14 +28,14 @@
 #define _16_UPPER_BITMASK 0xFFFF0000
 #define _16_LOWER_BITMASK 0xFFFF
 
-int gnrc_lorawan_mic_is_valid(uint8_t *buf, size_t len, uint8_t *nwkskey)
+static int gnrc_lorawan_mic_is_valid(gnrc_lorawan_t *mac, uint8_t *buf, size_t len, uint8_t *nwkskey)
 {
     le_uint32_t calc_mic;
 
     lorawan_hdr_t *lw_hdr = (lorawan_hdr_t *) buf;
 
     uint32_t fcnt = byteorder_ntohs(byteorder_ltobs(lw_hdr->fcnt));
-    gnrc_lorawan_calculate_mic(&lw_hdr->addr, fcnt, GNRC_LORAWAN_DIR_DOWNLINK, buf, len-MIC_SIZE, nwkskey, &calc_mic);
+    gnrc_lorawan_calculate_mic(mac, &lw_hdr->addr, fcnt, GNRC_LORAWAN_DIR_DOWNLINK, buf, len-MIC_SIZE, nwkskey, &calc_mic);
     return calc_mic.u32 == ((le_uint32_t *) (buf+len-MIC_SIZE))->u32;
 }
 
@@ -119,7 +119,7 @@ void gnrc_lorawan_mcps_process_downlink(gnrc_lorawan_t *mac, uint8_t *buf,
     struct parsed_packet _pkt;
 
     /* NOTE: MIC is in pkt */
-    if (!gnrc_lorawan_mic_is_valid(buf, len, mac->nwkskey)) {
+    if (!gnrc_lorawan_mic_is_valid(mac, buf, len, mac->nwkskey)) {
         DEBUG("gnrc_lorawan: invalid MIC\n");
         gnrc_lorawan_mcps_event(mac, MCPS_EVENT_NO_RX, 0);
         return;
@@ -145,7 +145,7 @@ void gnrc_lorawan_mcps_process_downlink(gnrc_lorawan_t *mac, uint8_t *buf,
             key = mac->nwkskey;
             fopts = &_pkt.enc_payload;
         }
-        gnrc_lorawan_encrypt_payload(_pkt.enc_payload.iol_base, _pkt.enc_payload.iol_len, &_pkt.hdr->addr, byteorder_ntohs(byteorder_ltobs(_pkt.hdr->fcnt)), GNRC_LORAWAN_DIR_DOWNLINK, key);
+        gnrc_lorawan_encrypt_payload(mac, _pkt.enc_payload.iol_base, _pkt.enc_payload.iol_len, &_pkt.hdr->addr, byteorder_ntohs(byteorder_ltobs(_pkt.hdr->fcnt)), GNRC_LORAWAN_DIR_DOWNLINK, key);
     }
 
     mac->mcps.fcnt_down = _pkt.fcnt_down;
@@ -219,9 +219,9 @@ size_t gnrc_lorawan_build_uplink(gnrc_lorawan_t *mac, iolist_t *payload, int con
         buf.index += psize;
     }
 
-    gnrc_lorawan_encrypt_payload(pl, psize, &mac->dev_addr, mac->mcps.fcnt, GNRC_LORAWAN_DIR_UPLINK, port ? mac->appskey : mac->nwkskey);
+    gnrc_lorawan_encrypt_payload(mac, pl, psize, &mac->dev_addr, mac->mcps.fcnt, GNRC_LORAWAN_DIR_UPLINK, port ? mac->appskey : mac->nwkskey);
 
-    gnrc_lorawan_calculate_mic(&mac->dev_addr, mac->mcps.fcnt, GNRC_LORAWAN_DIR_UPLINK,
+    gnrc_lorawan_calculate_mic(mac, &mac->dev_addr, mac->mcps.fcnt, GNRC_LORAWAN_DIR_UPLINK,
                                out, buf.index, mac->nwkskey, (le_uint32_t*) &buf.data[buf.index]);
     buf.index += MIC_SIZE;
     return buf.index;

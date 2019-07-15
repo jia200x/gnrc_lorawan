@@ -107,7 +107,7 @@ typedef struct {
  * @param[in] dir direction of the packet (0 if uplink, 1 if downlink)
  * @param[in] appskey pointer to the Application Session Key
  */
-void gnrc_lorawan_encrypt_payload(uint8_t *buf, size_t len, const le_uint32_t *dev_addr, uint32_t fcnt, uint8_t dir, const uint8_t *appskey);
+void gnrc_lorawan_encrypt_payload(gnrc_lorawan_t *mac, uint8_t *buf, size_t len, const le_uint32_t *dev_addr, uint32_t fcnt, uint8_t dir, const uint8_t *appskey);
 
 /**
  * @brief Decrypts join accept message
@@ -117,7 +117,7 @@ void gnrc_lorawan_encrypt_payload(uint8_t *buf, size_t len, const le_uint32_t *d
  * @param[in] has_clist true if the Join Accept frame has CFList
  * @param[out] out buffer where the decryption is stored
  */
-void gnrc_lorawan_decrypt_join_accept(const uint8_t *key, uint8_t *pkt, int has_clist, uint8_t *out);
+void gnrc_lorawan_decrypt_join_accept(gnrc_lorawan_t *mac, const uint8_t *key, uint8_t *pkt, int has_clist, uint8_t *out);
 
 /**
  * @brief Generate LoRaWAN session keys
@@ -131,7 +131,7 @@ void gnrc_lorawan_decrypt_join_accept(const uint8_t *key, uint8_t *pkt, int has_
  * @param[out] nwkskey pointer to the NwkSKey
  * @param[out] appskey pointer to the AppSKey
  */
-void gnrc_lorawan_generate_session_keys(const uint8_t *app_nonce, const uint8_t *dev_nonce, const uint8_t *appkey, uint8_t *nwkskey, uint8_t *appskey);
+void gnrc_lorawan_generate_session_keys(gnrc_lorawan_t *mac, const uint8_t *app_nonce, const uint8_t *dev_nonce, const uint8_t *appkey, uint8_t *nwkskey, uint8_t *appskey);
 
 /**
  * @brief Set datarate for the next transmission
@@ -194,7 +194,7 @@ void gnrc_lorawan_process_fopts(gnrc_lorawan_t *mac, uint8_t *fopts, size_t size
  * @param[in] key key used to calculate the MIC
  * @param[out] out calculated MIC
  */
-void  gnrc_lorawan_calculate_join_mic(const uint8_t *buf, size_t len, const uint8_t *key, le_uint32_t *out);
+void  gnrc_lorawan_calculate_join_mic(gnrc_lorawan_t *mac, const uint8_t *buf, size_t len, const uint8_t *key, le_uint32_t *out);
 
 /**
  * @brief Calculate Message Integrity Code for a MCPS message
@@ -206,7 +206,7 @@ void  gnrc_lorawan_calculate_join_mic(const uint8_t *buf, size_t len, const uint
  * @param[in] nwkskey pointer to the Network Session Key
  * @param[out] out calculated MIC
  */
-void gnrc_lorawan_calculate_mic(const le_uint32_t *dev_addr, uint32_t fcnt,
+void gnrc_lorawan_calculate_mic(gnrc_lorawan_t *mac, const le_uint32_t *dev_addr, uint32_t fcnt,
                                 uint8_t dir, uint8_t *buf, size_t len,
                                 const uint8_t *nwkskey, le_uint32_t *out);
 

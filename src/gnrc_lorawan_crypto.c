@@ -16,9 +16,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "hashes/cmac.h"
-#include "crypto/ciphers.h"
-
 #include "gnrc_lorawan/lorawan.h"
 #include "gnrc_lorawan_internal.h"
 #include "byteorder.h"
@@ -32,9 +29,7 @@
 #define APP_SKEY_B0_START (0x1)
 #define NWK_SKEY_B0_START (0x2)
 
-static cmac_context_t CmacContext;
 static uint8_t digest[LORAMAC_APPKEY_LEN];
-static cipher_t AesContext;
 
 typedef struct  __attribute__((packed)) {
     uint8_t fb;
@@ -46,16 +41,16 @@ typedef struct  __attribute__((packed)) {
     uint8_t len;
 } lorawan_block_t;
 
-void gnrc_lorawan_calculate_join_mic(const uint8_t *buf, size_t len, const uint8_t *key, le_uint32_t *out)
+void gnrc_lorawan_calculate_join_mic(gnrc_lorawan_t *mac, const uint8_t *buf, size_t len, const uint8_t *key, le_uint32_t *out)
 {
-    cmac_init(&CmacContext, key, LORAMAC_APPKEY_LEN);
-    cmac_update(&CmacContext, buf, len);
-    cmac_final(&CmacContext, digest);
+    gnrc_lorawan_cmac_init(mac, key);
+    gnrc_lorawan_cmac_update(mac, buf, len);
+    gnrc_lorawan_cmac_finish(mac, digest);
 
     memcpy(out, digest, sizeof(le_uint32_t));
 }
 
-void gnrc_lorawan_calculate_mic(const le_uint32_t *dev_addr, uint32_t fcnt,
+void gnrc_lorawan_calculate_mic(gnrc_lorawan_t *mac, const le_uint32_t *dev_addr, uint32_t fcnt,
                                 uint8_t dir, uint8_t *buf, size_t len, const uint8_t *nwkskey, le_uint32_t *out)
 {
     lorawan_block_t block;
@@ -72,15 +67,15 @@ void gnrc_lorawan_calculate_mic(const le_uint32_t *dev_addr, uint32_t fcnt,
 
     block.len = len;
 
-    cmac_init(&CmacContext, nwkskey, LORAMAC_APPKEY_LEN);
-    cmac_update(&CmacContext, &block, sizeof(block));
-    cmac_update(&CmacContext, buf, len);
-    cmac_final(&CmacContext, digest);
+    gnrc_lorawan_cmac_init(mac, nwkskey);
+    gnrc_lorawan_cmac_update(mac, &block, sizeof(block));
+    gnrc_lorawan_cmac_update(mac, buf, len);
+    gnrc_lorawan_cmac_finish(mac, digest);
 
     memcpy(out, digest, sizeof(le_uint32_t));
 }
 
-void gnrc_lorawan_encrypt_payload(uint8_t *buf, size_t len, const le_uint32_t *dev_addr, uint32_t fcnt, uint8_t dir, const uint8_t *appskey)
+void gnrc_lorawan_encrypt_payload(gnrc_lorawan_t *mac, uint8_t *buf, size_t len, const le_uint32_t *dev_addr, uint32_t fcnt, uint8_t dir, const uint8_t *appskey)
 {
     uint8_t s_block[16];
     uint8_t a_block[16];
@@ -90,7 +85,7 @@ void gnrc_lorawan_encrypt_payload(uint8_t *buf, size_t len, const le_uint32_t *d
 
     lorawan_block_t *block = (lorawan_block_t *) a_block;
 
-    cipher_init(&AesContext, CIPHER_AES_128, appskey, LORAMAC_APPKEY_LEN);
+    gnrc_lorawan_aes128_init(mac, appskey);
 
     block->fb = CRYPT_B0_START;
 
@@ -106,7 +101,7 @@ void gnrc_lorawan_encrypt_payload(uint8_t *buf, size_t len, const le_uint32_t *d
     for (unsigned i = 0; i < len; i++) {
         if ((c & SBIT_MASK) == 0) {
             block->len = (c >> 4) + 1;
-            cipher_encrypt(&AesContext, a_block, s_block);
+            gnrc_lorawan_aes128_encrypt(mac, a_block, s_block);
         }
 
         buf[i] = buf[i] ^ s_block[c & SBIT_MASK];
@@ -114,23 +109,23 @@ void gnrc_lorawan_encrypt_payload(uint8_t *buf, size_t len, const le_uint32_t *d
     }
 }
 
-void gnrc_lorawan_decrypt_join_accept(const uint8_t *key, uint8_t *pkt, int has_clist, uint8_t *out)
+void gnrc_lorawan_decrypt_join_accept(gnrc_lorawan_t *mac, const uint8_t *key, uint8_t *pkt, int has_clist, uint8_t *out)
 {
-    cipher_init(&AesContext, CIPHER_AES_128, key, LORAMAC_APPKEY_LEN);
-    cipher_encrypt(&AesContext, pkt, out);
+    gnrc_lorawan_aes128_init(mac, key);
+    gnrc_lorawan_aes128_encrypt(mac, pkt, out);
 
     if (has_clist) {
-        cipher_encrypt(&AesContext, pkt + LORAMAC_APPKEY_LEN, out + LORAMAC_APPKEY_LEN);
+        gnrc_lorawan_aes128_encrypt(mac, pkt + LORAMAC_APPKEY_LEN, out + LORAMAC_APPKEY_LEN);
     }
 }
 
-void gnrc_lorawan_generate_session_keys(const uint8_t *app_nonce, const uint8_t *dev_nonce, const uint8_t *appkey, uint8_t *nwkskey, uint8_t *appskey)
+void gnrc_lorawan_generate_session_keys(gnrc_lorawan_t *mac, const uint8_t *app_nonce, const uint8_t *dev_nonce, const uint8_t *appkey, uint8_t *nwkskey, uint8_t *appskey)
 {
     uint8_t buf[LORAMAC_APPSKEY_LEN];
 
     memset(buf, 0, sizeof(buf));
 
-    cipher_init(&AesContext, CIPHER_AES_128, appkey, LORAMAC_APPSKEY_LEN);
+    gnrc_lorawan_aes128_init(mac, appkey);
 
     /* net_id comes right after app_nonce */
     memcpy(buf + 1, app_nonce, GNRC_LORAWAN_APP_NONCE_SIZE + GNRC_LORAWAN_NET_ID_SIZE);
@@ -138,11 +133,11 @@ void gnrc_lorawan_generate_session_keys(const uint8_t *app_nonce, const uint8_t 
 
     /* Calculate Application Session Key */
     buf[0] = APP_SKEY_B0_START;
-    cipher_encrypt(&AesContext, buf, nwkskey);
+    gnrc_lorawan_aes128_encrypt(mac, buf, nwkskey);
 
     /* Calculate Network Session Key */
     buf[0] = NWK_SKEY_B0_START;
-    cipher_encrypt(&AesContext, buf, appskey);
+    gnrc_lorawan_aes128_encrypt(mac, buf, appskey);
 }
 
 /** @} */
